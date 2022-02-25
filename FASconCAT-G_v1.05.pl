@@ -11,7 +11,7 @@ my $prottest = 'prottest-3.3.jar' ;
 ##############################
 
 
-# written by patrick kück, zentrales forschungsmuseum alexander koenig, bonn, germany
+# written by patrick kï¿½ck, zentrales forschungsmuseum alexander koenig, bonn, germany
 # email: patrick_kueck@web.de
 
 # updated on 12th,january	, 2009 by patrick kueck
@@ -29,7 +29,8 @@ my $prottest = 'prottest-3.3.jar' ;
 # updated on 30th september	, 2014 by patrick kueck -> FcC-G v1.01 Implementation of additional Screen Output (%Missing Data and Single Infile Sequence Ranges in the concatenated supermatrix) as well as some output result file format changes
 # updated on 16th november	, 2014 by patrick kueck ->input file endings line 1529-1531->FcC v1.03
 # updated on 22nd november	, 2016 by patrick kueck -> concatenation and print out of supermatrix ranges due to sorted infile names and not randomly. Debuged read in error of .FASTA or .fasta named files
-# updated on 22nd march     , 2021 by patrick kueck -> FcC-G v1.05 Including an additional character coding option for absent sequence data (-g). With -g, absent sequence data is filled by '-' rather than 'N/X' during the concatenation process
+# updated on 22nd march     	, 2021 by patrick kueck -> FcC-G v1.05 Including an additional character coding option for absent sequence data (-g). With -g, absent sequence data is filled by '-' rather than 'N/X' during the concatenation process
+# updated on 22nd february  	, 2022 by jgl 		-> Resolved command conflict: 'Replace missing sequences with' set to (-g); 'Preface' set to (-x); some minor character corrections to comments
 ####################################################### START #######################################################################################
 
 
@@ -57,7 +58,7 @@ my @parameter_ryc	= ( 'NO',			'All',		'3rd'					) ; # Parameter option of RY cod
 my @parameter_par	= ( 'NO',			'YES'								) ;	# Print parsimonious sites as extra msa file				-> 'NO' -> no print;	'YES' -> print
 my @parameter_ren	= ( 'NO',			'YES'								) ;	# Rename taxon names of given infiles						-> 'NO' ;	'YES'
 my @parameter_prt	= ( 'NO',			'Supermatrix'						) ;	# Print OUT additional partition files if concatenated		-> 'NO' ;	'Supermatrix' means yes for concatenatde files
-my @parameter_pro	= ( 'NO',			'Supermatrix'						) ;	# Start prottest analyses für aa data						-> 'NO' ;	'YES'
+my @parameter_pro	= ( 'NO',			'Supermatrix'						) ;	# Start prottest analyses for aa data						-> 'NO' ;	'YES'
 my @parameter_mis	= ( 'Missing',		'Indel'								) ;	# Replace missing sequences with							-> 'Missing': 'X' or 'N' ; 'Indel': '-'
 
 ##############################
@@ -76,7 +77,7 @@ my @parameter_mis	= ( 'Missing',		'Indel'								) ;	# Replace missing sequences
 					\@parameter_par,	# Print parsimonious sites as extra msa file						-> IN (defined) / OUT (changed)
 					\@parameter_ren,	# Rename taxon names of given ifiles								-> IN (defined) / OUT (changed)
 					\@parameter_prt,	# Print partition files for concatenated data						-> IN (defined) / OUT (changed)
-					\@parameter_pro,	# Start prottest analyses für aa data								-> IN (defined) / OUT (changed)
+					\@parameter_pro,	# Start prottest analyses for aa data								-> IN (defined) / OUT (changed)
 					\@parameter_mis,	# Replace missing gene sequences by '-' instead using 'X' or 'N'	-> IN (defined) / OUT (changed)
 					\%outfile_name,		# Outfilename of output option										-> IN (defined) / OUT (unchanged)
 ) ;
@@ -107,7 +108,7 @@ my @parameter_mis	= ( 'Missing',		'Indel'								) ;	# Replace missing sequences
 			\@parameter_par,	# Print parsimonious sites as extra msa file						-> IN (defined) / OUT (changed)
 			\@parameter_ren,	# Rename taxon names of given ifiles								-> IN (defined) / OUT (changed)
 			\@parameter_prt,	# Print partition files for concatenated data						-> IN (defined) / OUT (changed)
-			\@parameter_pro,	# Start prottest analyses für aa data								-> IN (defined) / OUT (changed)
+			\@parameter_pro,	# Start prottest analyses for aa data								-> IN (defined) / OUT (changed)
 			\@parameter_mis,	# Replace missing gene sequences by '-' instead using 'X' or 'N'	-> IN (defined) / OUT (changed)
 			\%outfile_name,		# Outfilename of output option										-> IN (defined) / OUT (unchanged)
 );
@@ -134,7 +135,7 @@ sub argv_handling{
 	my $aref_parameter_par	= $_[10];	# List of sequence translation options								-> IN (defined) / OUT (changed)
 	my $aref_parameter_ren	= $_[11];	# Rename taxon names of given ifiles								-> IN (defined) / OUT (changed)
 	my $aref_parameter_prt	= $_[12];	# Print partition files for concatenated data						-> IN (defined) / OUT (changed)
-	my $aref_parameter_pro	= $_[13];	# Start prottest analyses für aa data								-> IN (defined) / OUT (changed)
+	my $aref_parameter_pro	= $_[13];	# Start prottest analyses for aa data								-> IN (defined) / OUT (changed)
 	my $aref_parameter_mis	= $_[14];	# Replace missing gene sequences by '-' instead using 'X' or 'N'	-> IN (defined) / OUT (changed)
 	my $href_outfile_name	= $_[15];	# Outfilename of output option										-> IN (defined) / OUT (unchanged)
 	
@@ -172,7 +173,7 @@ sub argv_handling{
 			elsif 	( $single_command =~ /^k$/i		)	{ @$aref_parameter_ren = reverse @$aref_parameter_ren }						# '-k'		-> set rename of sequence names to YES;				'-k -k' -> to NO
 			elsif 	( $single_command =~ /^l$/i		)	{ @$aref_parameter_prt = reverse @$aref_parameter_prt }						# '-l'		-> set part. file of conc matrix to Supermatrix;	'-l -l' -> to NO
 			elsif 	( $single_command =~ /^m$/i		)	{ @$aref_parameter_pro = reverse @$aref_parameter_pro }						# '-m'		-> start prottest under linux;						'-m -m' -> don't start prottest (default)
-			elsif 	( $single_command =~ /^g$/i		)	{ @$aref_parameter_mis = reverse @$aref_parameter_mis }						# '-x'		-> replace missing sequences by '-';				'-x -x' -> replace missing sequences by 'X' or 'N' (default)
+			elsif 	( $single_command =~ /^g$/i		)	{ @$aref_parameter_mis = reverse @$aref_parameter_mis }						# '-g'		-> replace missing sequences by '-';				'-g -g' -> replace missing sequences by 'X' or 'N' (default)                                    #jgl#'-x -> -g'#jgl#
 			elsif 	( $single_command =~ /^e$/i		)	{ my $tl = shift @$aref_parameter_tra ; push @$aref_parameter_tra, $tl }	# '-e'		-> translate nuc data to aa data;					'-e -e' -> translate aa data to nuc data	'-e -e -e' -> no translation
 			elsif 	( $single_command =~ /^c$/i		)	{ my $tl = shift @$aref_parameter_con ; push @$aref_parameter_con, $tl }	# '-c'		-> Generate frequency consensus sequence;			'-c -c' -> majority consensus;		 		'-c -c -c' -> strict consensus;	'-c -c -c -c' -> to default (no consensus)
 			elsif 	( $single_command =~ /^p$/i		)	{ my $tl = shift @$aref_parameter_phy ; push @$aref_parameter_phy, $tl }	# '-p'		-> set supermatrix format to strict phylip;			'-p -p' -> to relaxed phylip;		 		'-p -p -p' -> to default (no phylip)
@@ -286,7 +287,7 @@ sub parameter{
 	my $aref_parameter_par	= $_[10];	# List of sequence translation options						-> IN (defined) / OUT (changed)
 	my $aref_parameter_ren	= $_[11];	# Rename taxon names of given ifiles						-> IN (defined) / OUT (changed)
 	my $aref_parameter_prt	= $_[12];	# Print partition files for concatenated data				-> IN (defined) / OUT (changed)
-	my $aref_parameter_pro	= $_[13];	# Start prottest analyses für aa data						-> IN (defined) / OUT (changed)
+	my $aref_parameter_pro	= $_[13];	# Start prottest analyses fï¿½r aa data						-> IN (defined) / OUT (changed)
 	my $aref_parameter_mis	= $_[14];	# Replacement code of missing gene sequences 				-> IN (defined) / OUT (changed)
 	my $href_outfile_name	= $_[15];	# Outfilename of output option								-> IN (defined) / OUT (unchanged)
 	
@@ -315,7 +316,7 @@ sub parameter{
 			"\n",
 			"\n\tHELP       FASconCAT     :\t\t type <h> <enter>",
 			"\n\tQUIT       FASconCAT     :\t\t type <q> <enter>",
-			"\n\tPREFACE    FASconCAT     :\t\t type <g> <enter>",
+			"\n\tPREFACE    FASconCAT     :\t\t type <x> <enter>",                                                                                                                                  #jgl#'<g> -> <x>'#jgl#
 			"\n",
 			"\n\t------------------------------------------------------------",
 			"\n",
@@ -347,19 +348,19 @@ sub parameter{
 	
 	
 	##############################
-	## (1) Read IN user defined comman
+	## (1) Read IN user defined command                                                                                                                                                                 #jgl#'=> d'#jgl#
 	## (2) If command option allowed, change parameter setting
 	## (3) unless user defined command allowed print error prompt
 	my			$start_string ;
 	my			$single_command	= &commandline ( \$start_string ) ; # (1)
 	
 	# (2)
-	unless (	$single_command	=~ /^s$|^i$|^f$|^q$|^h$|^n$|^p$|^a$|^c$|^o$|^a$|^b$|^q$|^d$|^e$|^g$|^j$|^k$|^l$|^g$|^m$/i ){ print "\n\tCOMMAND-ERROR!: Unknown command ".$single_command."!\n" }
+	unless (	$single_command	=~ /^s$|^i$|^f$|^q$|^h$|^n$|^p$|^a$|^c$|^o$|^a$|^b$|^q$|^d$|^e$|^g$|^j$|^k$|^l$|^g$|^m$|^x$/i ){ print "\n\tCOMMAND-ERROR!: Unknown command ".$single_command."!\n" }   #jgl#'=> $|^x'#jgl#
 	
 	
 	# (3)
 	if 		( $single_command =~ /^h$/i		)	{ &help }																		# '-h'		-> open help menu
-	elsif 	( $single_command =~ /^g$/i		)	{ &preface}																		# '-e'		-> open preface menu
+	elsif 	( $single_command =~ /^x$/i		)	{ &preface}																		# '-x'		-> open preface menu                                        #jgl#'/^g> -> /^x' ; '-e -> -x'#jgl# 
 	elsif	( $single_command =~ /^q$/i		)	{ exit }																		# '-q'		-> exit FASconCAT
 	elsif 	( $single_command =~ /^i$/i		)	{ @$aref_parameter_inf = reverse @$aref_parameter_inf }							# '-i'		-> set additional info print to YES; 				'-i -i' -> to NO
 	elsif 	( $single_command =~ /^f$/i		)	{ @$aref_parameter_all = reverse @$aref_parameter_all }							# '-f'		-> set infile READ IN to defined;					'-f -f' -> to all possible infiles
@@ -369,7 +370,7 @@ sub parameter{
 	elsif 	( $single_command =~ /^k$/i		)	{ @$aref_parameter_ren = reverse @$aref_parameter_ren }							# '-k'		-> set rename of sequence names to YES;				'-k -k' -> to NO
 	elsif 	( $single_command =~ /^l$/i		)	{ @$aref_parameter_prt = reverse @$aref_parameter_prt }							# '-l'		-> set part. file of conc matrix to Supermatrix;	'-l -l' -> to NO
 	elsif 	( $single_command =~ /^m$/i		)	{ @$aref_parameter_pro = reverse @$aref_parameter_pro }							# '-m'		-> start prottest under linux;						'-m -m' -> don't start prottest (default)
-	elsif 	( $single_command =~ /^g$/i		)	{ @$aref_parameter_mis = reverse @$aref_parameter_mis }							# '-x'		-> replace missing sequences by '-';				'-x -x' -> replace missing sequences by 'X' or 'N' (default)
+	elsif 	( $single_command =~ /^g$/i		)	{ @$aref_parameter_mis = reverse @$aref_parameter_mis }							# '-g'		-> replace missing sequences by '-';				'-g -g' -> replace missing sequences by 'X' or 'N' (default)                #jgl#'-x -> -g'#jgl#
 	elsif 	( $single_command =~ /^e$/i		)	{ my $tl = shift @$aref_parameter_tra ; push @$aref_parameter_tra, $tl }		# '-e'		-> translate nuc data to aa data;					'-e -e' -> translate aa data to nuc data	'-e -e -e' -> no translation
 	elsif 	( $single_command =~ /^c$/i		)	{ my $tl = shift @$aref_parameter_con ; push @$aref_parameter_con, $tl }		# '-c'		-> Generate frequency consensus sequence;			'-c -c' -> majority consensus;		 		'-c -c -c' -> strict consensus;	'-c -c -c -c' -> to default (no consensus)
 	elsif 	( $single_command =~ /^p$/i		)	{ my $tl = shift @$aref_parameter_phy ; push @$aref_parameter_phy, $tl }		# '-p'		-> set supermatrix format to strict phylip;			'-p -p' -> to relaxed phylip;		 		'-p -p -p' -> to default (no phylip)
@@ -5164,7 +5165,6 @@ sub commandline{
 	return $sub_answer_opening ;
 	##############################
 }
-
 
 
 

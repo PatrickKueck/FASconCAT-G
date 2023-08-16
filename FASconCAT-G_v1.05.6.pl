@@ -5,9 +5,10 @@ use File::Copy;
 use Tie::File;
 use Term::ANSIColor qw(:constants);
 use Getopt::Std;
+use Scalar::Util 'looks_like_number';
 #use warnings;
 
-my $script_version = '1.05.5';
+my $script_version = '1.05.6';
 
 ######################################### ENTER THE PROTTEST SOFTWARE NAME OF YOUR RUNNING SYSTEM IN SINGLE QUOTATION MARKS ''
 # DEFINEMENT OF ACTUAL PROTTEST SOFTWARE NAME
@@ -38,6 +39,7 @@ my $prottest = 'prottest-3.3.jar';
 # updated on 19th april     , 2022 by patrick kueck -> FcC-G_v1.05.2 Resolved empty line conflict at the end of phylip files (last sequence followed by multiple newlines) in &phy2fas
 # updated on 22nd april     , 2022 by patrick kueck -> FcC-G_v1.05.3 Enabled help-menu entree via command line option '-h' additionally to '-help' option, allowing "perl FASconCAT_v1.05.3.pl -h <enter>"
 # updated on      august    , 2023 by jgl           -> FcC-G v1.05.5 Attempted to address warnings: private var in void context; non-num sort; wrong fh; uninit scalar ref; unecessary redef. Versioning info to stdout, formatting and minor character corrections.
+# updated on      august    , 2023 by jgl           -> FcC-G v1.05.6 Addressed remaining warnings: non-num sort; structure vars undef in absence of structure data. New columns reported in info file for locus alignment in the concatenated supermatrix.
 
 my $last_update = 'August, 2023';
 ####################################################### START #######################################################################################
@@ -141,7 +143,7 @@ sub argv_handling{
     my $aref_parameter_3rd = $_[7];  # List of third position handling                                -> IN (defined) / OUT (changed)
     my $aref_parameter_ryc = $_[8];  # List of RY coding                                              -> IN (defined) / OUT (changed)
     my $aref_parameter_tra = $_[9];  # List of sequence translation options                           -> IN (defined) / OUT (changed)
-    my $aref_parameter_par = $_[10]; # List of sequence translation options                           -> IN (defined) / OUT (changed)
+    my $aref_parameter_par = $_[10]; # Print parsimonious sites as extra msa file                     -> IN (defined) / OUT (changed)
     my $aref_parameter_ren = $_[11]; # Rename taxon names of given ifiles                             -> IN (defined) / OUT (changed)
     my $aref_parameter_prt = $_[12]; # Print partition files for concatenated data                    -> IN (defined) / OUT (changed)
     my $aref_parameter_pro = $_[13]; # Start prottest analyses for aa data                            -> IN (defined) / OUT (changed)
@@ -294,7 +296,7 @@ sub parameter{
     my $aref_parameter_3rd = $_[7];  # List of third position handling                           -> IN (defined) / OUT (changed)
     my $aref_parameter_ryc = $_[8];  # List of RY coding                                         -> IN (defined) / OUT (changed)
     my $aref_parameter_tra = $_[9];  # List of sequence translation options                      -> IN (defined) / OUT (changed)
-    my $aref_parameter_par = $_[10]; # List of sequence translation options                      -> IN (defined) / OUT (changed)
+    my $aref_parameter_par = $_[10]; # Print parsimonious sites as extra msa file                -> IN (defined) / OUT (changed)
     my $aref_parameter_ren = $_[11]; # Rename taxon names of given ifiles                        -> IN (defined) / OUT (changed)
     my $aref_parameter_prt = $_[12]; # Print partition files for concatenated data               -> IN (defined) / OUT (changed)
     my $aref_parameter_pro = $_[13]; # Start prottest analyses for aa data                       -> IN (defined) / OUT (changed)
@@ -1385,7 +1387,7 @@ sub start{
 
                     ##############################
                     ## change structure name of given variabels
-                    if ( $taxon eq $$sref_structure ){
+                    if (defined $$sref_structure && $taxon eq $$sref_structure ){
                         $$sref_structure = $new_name_of_old_name{$taxon};
                         $href_hoh_info_of_infile_of_type->{$infile}{taxstruct} = $$sref_structure
                     }
@@ -1641,7 +1643,11 @@ sub start{
 
                     ##############################
                     ## unless taxon name of structure string is defined define given taxon name as structure sequence associated taxon name
-                    unless ( $href_hoh_info_of_infile_of_type->{$file}{taxstruct} ){ $href_hoh_info_of_infile_of_type->{$file}{taxstruct} = $taxon; $$sref_structure = $taxon }
+                    #unless ( $href_hoh_info_of_infile_of_type->{$file}{taxstruct} ){ $href_hoh_info_of_infile_of_type->{$file}{taxstruct} = $taxon; $$sref_structure = $taxon }
+                    unless (defined $href_hoh_info_of_infile_of_type->{$file}{taxstruct} && $href_hoh_info_of_infile_of_type->{$file}{taxstruct}) {
+                        $href_hoh_info_of_infile_of_type->{$file}{taxstruct} = $taxon;
+                        $$sref_structure = $taxon if defined $sref_structure;
+                    }
                     ##############################
 
 
@@ -1655,7 +1661,7 @@ sub start{
 
                     ##############################
                     ## Check for correct structure signs ( only '(', ')', '.' are allowed)
-                    my @strc_elements                =  split "" , $sequence_of_taxon{$taxon};
+                    my @strc_elements =  split "" , $sequence_of_taxon{$taxon};
 
                     for my $str_sign ( @strc_elements ){
 
@@ -1670,8 +1676,10 @@ sub start{
                     ##############################
                     ## If given taxon name of associated structure sequence unequal to previous identified structure name, die with an error prompt
                     ## else print OUT info about identified structure string
-                    if ( $href_hoh_info_of_infile_of_type->{$file}{taxstruct} ne $taxon ){ die "\n\t!FILE-ERROR!: Multiple structure sequences found: ", $href_hoh_info_of_infile_of_type->{$file}{taxstruct}, ", ", $taxon, "!\n" } # (2)
-                    else { print  "\n\t!FILE-INFO!: Structure sequence ", $taxon, " found in file ", $file, "!\n" }
+                    if ( defined $href_hoh_info_of_infile_of_type->{$file}{taxstruct} && $href_hoh_info_of_infile_of_type->{$file}{taxstruct} ne $taxon ){
+                        die "\n\t!FILE-ERROR!: Multiple structure sequences found: ", $href_hoh_info_of_infile_of_type->{$file}{taxstruct}, ", ", $taxon, "!\n"; # (2)
+                    } else {
+                        print  "\n\t!FILE-INFO!: Structure sequence ", $taxon, " found in file ", $file, "!\n" }
                     ##############################
                 }
                 ############################################################ # END STRUCTURE SEQUENCE IDENTIFICATION & HANDLING
@@ -2718,18 +2726,18 @@ sub start{
                     $string_missing_taxon_states, #
             );
             
-            if    ( $$sref_structure                                              ){ $string_missing_taxon_dots   = ( "." x $href_hoh_info_of_infile_of_type->{$infile}{seqlength} ) }
+            if    ( defined $$sref_structure && $$sref_structure                  ){ $string_missing_taxon_dots   = ( "." x $href_hoh_info_of_infile_of_type->{$infile}{seqlength} ) }
             if    ( $$sref_fill_code                                   eq 'Indel' ){ $string_missing_taxon_states = ( "-" x $href_hoh_info_of_infile_of_type->{$infile}{seqlength} ) }
             elsif ( $href_hoh_info_of_infile_of_type->{$infile}{seqtype} eq 'nu'  ){ $string_missing_taxon_states = ( "N" x $href_hoh_info_of_infile_of_type->{$infile}{seqlength} ) }
             else                                                                   { $string_missing_taxon_states = ( "X" x $href_hoh_info_of_infile_of_type->{$infile}{seqlength} ) }
             
             #for my $taxon ( sort {$a<=>$b} keys %$href_name_list ){
-            for my $taxon ( sort { $a <=> $b || $a cmp $b } keys %$href_name_list ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
+            for my $taxon ( sort { (looks_like_number($a) && looks_like_number($b)) ? ($a<=>$b) : ($a cmp $b) } keys %$href_name_list ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
                 
                 $href_hoh_info_of_infile_of_type->{supermatrix}{taxconcat}{$taxon}++;
                 
                 if       ( $sequence_of_taxon{$taxon}                                       ){ $supermatrix_of_taxon{$taxon} .= $sequence_of_taxon{$taxon};   $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat  }{$taxon}++; $href_hoh_info_of_infile_of_type->{$infile}{Ntaxa_in}++  }
-                elsif    ( $taxon eq $$sref_structure                                       ){ $supermatrix_of_taxon{$taxon} .= $string_missing_taxon_dots;   $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon}++; $href_hoh_info_of_infile_of_type->{$infile}{Ntaxa_mis}++ } #push @{$href_hol_seq_of_tax_of_infile->{$infile}}, ( $taxon, $string_missing_taxon_dots   ) }    # (1)
+                elsif    ( defined $$sref_structure && $taxon eq $$sref_structure           ){ $supermatrix_of_taxon{$taxon} .= $string_missing_taxon_dots;   $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon}++; $href_hoh_info_of_infile_of_type->{$infile}{Ntaxa_mis}++ } #push @{$href_hol_seq_of_tax_of_infile->{$infile}}, ( $taxon, $string_missing_taxon_dots   ) }    # (1)
                 elsif    ( 'nu'   eq $href_hoh_info_of_infile_of_type->{$infile}{seqtype  } ){ $supermatrix_of_taxon{$taxon} .= $string_missing_taxon_states; $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon}++; $href_hoh_info_of_infile_of_type->{$infile}{Ntaxa_mis}++ } #push @{$href_hol_seq_of_tax_of_infile->{$infile}}, ( $taxon, $string_missing_taxon_states ) }    # (2)
                 elsif    ( 'aa'   eq $href_hoh_info_of_infile_of_type->{$infile}{seqtype  } ){ $supermatrix_of_taxon{$taxon} .= $string_missing_taxon_states; $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon}++; $href_hoh_info_of_infile_of_type->{$infile}{Ntaxa_mis}++ } #push @{$href_hol_seq_of_tax_of_infile->{$infile}}, ( $taxon, $string_missing_taxon_states ) }    # (3)
                 else     { die "\n\tBUG-ERROR: Cannot concatenate sequence ", $taxon, " of file ", $infile, "!\n" }
@@ -2741,7 +2749,8 @@ sub start{
 
 
         ############################################################ START SUPERMATRIX TAXON ASSIGNMENT
-        for my $taxon ( sort {$a<=>$b} keys %supermatrix_of_taxon ){
+        #for my $taxon ( sort {$a<=>$b} keys %supermatrix_of_taxon ){
+        for my $taxon ( sort { (looks_like_number($a) && looks_like_number($b)) ? ($a<=>$b) : ($a cmp $b) } keys %supermatrix_of_taxon ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
 
             push @{$href_hol_seq_of_tax_of_infile->{supermatrix}}, ( $taxon, $supermatrix_of_taxon{$taxon} );
 
@@ -3259,7 +3268,7 @@ sub start{
 
         ############################################################ START INFO STATE EXTRACTION OF CHARACTER STATES PER FILE
         #for my $infile ( sort {$a<=>$b} keys %$href_hol_seq_of_tax_of_infile ){
-        for my $infile ( sort { $a <=> $b || $a cmp $b } keys %$href_hol_seq_of_tax_of_infile ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
+        for my $infile ( sort { (looks_like_number($a) && looks_like_number($b)) ? ($a<=>$b) : ($a cmp $b) } keys %$href_hol_seq_of_tax_of_infile ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
 
 
             ##############################
@@ -3285,7 +3294,8 @@ sub start{
 
 
                 ############################################################ START CHECK OF DEFINED INFILE DATA OF GIVEN TAXON;
-                unless ( $taxon eq $href_hoh_info_of_infile_of_type->{$infile}{taxstruct} ){ #jgl# Warning >taxstruct unititialized<
+                #unless ( $taxon eq $href_hoh_info_of_infile_of_type->{$infile}{taxstruct} ){
+                unless ( exists($href_hoh_info_of_infile_of_type->{$infile}{taxstruct}) && $taxon eq $href_hoh_info_of_infile_of_type->{$infile}{taxstruct} ){ #jgl# Warning >taxstruct unititialized<
 
 
                     my @site_states      = split "", $sequence_of_taxon{$taxon};
@@ -3897,24 +3907,33 @@ sub start{
             ##############################
 
 
-
             ############################################################ START SEQUENCE INFO PRINT OUT
             ## If supermatrix is printed out
             ## (1) ...print out output format of supermatrix and additional supermatrix info
             ## (2) ...print infile name and supermatrix range of each infile and sequence infos
 
             #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            #jgl# if supermatrix is printed out, the <N CHARACTERS>, <N MISSING DATA>, <N INDELS> and <N AMBIGUITIES> (and perhaps other fields), should also reflect the info of the genes/loci/files in the context of the supermatrix,
-            #jgl# i.e. if a 5 sequence file is concatenated into a 500 sequence supermatrix, the info quoted here only represents 1% of what that gene/locus/file contributes within the supermatrix. There should be a distinction between the
-            #jgl# the gene/locus/file in isolation (relative character space = seq in gene/locus/file multiplied by he gene/locus/file sequence length), and the within the concatenated supermatrix
-            #jgl# (concatenated character space = # seq in supermatrix multiplied by the gene/locus/file sequence length). So the new fields could be, e.g. relative and absolute missing data|indels|ambiguities etc...
-            #jgl# I'm also getting incorrect counts in nucleotide concatenation report where there's sequences starting and ending in NNN's, but there's also ---'s within those sequences?
+            #jgl# If the supermatrix is printed out, shouldn't the the info content of the individual locus files (also) be reported in the context of that locus within the supermatrix?
+            #jgl# For example, if a 500 taxon supermatrix includes a locus alignment with only 5 taxa (but with zero missing/ambiguous/indel data), the missing/ambiguous/indel fields will
+            #jgl# indeed appear as zero despite being combined with 495 empty sequences when concatenated. This could be a trap for unaware users trying to filter their datasets by information content...
+            #jgl# There should be a distinction between each locus alignment in isolation (e.g. relative-CHARACTERS = number of taxa in the unconcatenated locus multiplied by the locus sequence length),
+            #jgl# and the within the concatenated supermatrix (total-CHARACTERS = number of taxa in supermatrix multiplied by the locus sequence length).
+            #jgl# I've added some columns to the info report to indicate this discrepancy: (names can be changed)
+            #jgl# <N CHARACTERS FILE> and <N CHARACTERS CONCAT_FILE> give the number character states in the locus alignment before and after concatenation
+            #jgl# <P CODING CHAR FILE [%]> and <P CODING CHAR CONCAT_FILE [%]> give the percentage of coding characters in the locus alignment before and after concatenation
+
+            #jgl# Total number of sequences in the supermatrix as a scalar for calculating post-concatenation values
+            my $n_taxa_supermatrix = 0;
+            if ( exists $href_hoh_info_of_infile_of_type->{'supermatrix'} ){
+                $n_taxa_supermatrix = $href_hoh_info_of_infile_of_type->{'supermatrix'}{Ntaxa};
+            }
             #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             if ( $aref_parameter_fil->[0] =~ /Supermatrix/ ){
 
                 # (1)
-                print OUT_info    "SUPERMATRIX FILE\tP CODING CHARACTERS [%]\tP MISSING DATA [?] [%]\tP INDELS [%]\tP AMBIGUITIES [%]\tP PARSIMONY INFORMATIVE SITES [%]\tP GC CONTENT [%]\tPRINTED AS FASTA\tPRINTED AS NEXUS\tPRINTED AS PHYLIP\nsupermatrix";
+                print OUT_info    "SUPERMATRIX FILE\tP CODING CHARACTERS [%]\tP MISSING DATA [?] [%]\tP INDELS [-] [%]\tP AMBIGUITIES [N|X] [%]\tP PARSIMONY INFORMATIVE SITES [%]\tP GC CONTENT [%]\tPRINTED AS FASTA\tPRINTED AS NEXUS\tPRINTED AS PHYLIP\nsupermatrix";
+                #jgl# appended [N|X] to AMBIGUITIES, and [-] to INDELS globally
 
                 my @printouts;
                 for my $state ( qw/infstate Nmissingstate Ngapstate Nambstate/ ){
@@ -3927,7 +3946,8 @@ sub start{
                     else{ print OUT_info "\t", 0 }
                 }
 
-                if ( $href_hoh_info_of_infile_of_type->{supermatrix}{infstate} ){
+                #if ( $href_hoh_info_of_infile_of_type->{supermatrix}{infstate} ){  #jgl# key2 checks coding characters; subsequent statement uses parsimony informative sites? (?)
+                if ( $href_hoh_info_of_infile_of_type->{supermatrix}{Ninf_sites} ){ #jgl## check
 
                     print OUT_info "\t", ( sprintf "%.3f", ( $href_hoh_info_of_infile_of_type->{supermatrix}{Ninf_sites} / $href_hoh_info_of_infile_of_type->{supermatrix}{seqlength} ) * 100 )
                 }
@@ -3945,29 +3965,55 @@ sub start{
                 else{  print OUT_info "\tonly nuc data" }
 
                 ( $href_hoh_info_of_infile_of_type->{supermatrix}{convertedfas} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" );
-                ( $href_hoh_info_of_infile_of_type->{supermatrix}{convertednex} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" );
-                ( $href_hoh_info_of_infile_of_type->{supermatrix}{convertedphy} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" );
+                #( $href_hoh_info_of_infile_of_type->{supermatrix}{convertednex} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" ); #jgl# Warning >Use of uninitialized value in numeric eq (==)<
+                ( defined $href_hoh_info_of_infile_of_type->{supermatrix}{convertednex} && $href_hoh_info_of_infile_of_type->{supermatrix}{convertednex} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" );
+
+                #( $href_hoh_info_of_infile_of_type->{supermatrix}{convertedphy} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" ); #jgl# Warning >Use of uninitialized value in numeric eq (==)<
+                ( defined $href_hoh_info_of_infile_of_type->{supermatrix}{convertedphy} && $href_hoh_info_of_infile_of_type->{supermatrix}{convertedphy} == 1 ) ? ( print OUT_info "\tYES" ) : ( print OUT_info "\tNO" );
+
 
 
 
                 # (2)
-                print OUT_info "\n\nFILE\tSTART POSITION SUPERMATRIX\tEND POSITION SUPERMATRIX\tN SEQUENCES\tSEQUENCE TYPE\tN CHARACTERS";
+                print OUT_info "\n\nFILE\tSTART POSITION SUPERMATRIX\tEND POSITION SUPERMATRIX\tN SITES\tN SEQUENCES\tSEQUENCE TYPE\tN CHARACTERS FILE\tN CHARACTERS CONCAT_FILE"; #jgl# added N SITES(seqlength)
 
-                for my $state ( "N MISSING DATA [?]", "N INDELS", "N AMBIGUITIES", "N PARSIMONY INFORMATIVE SITES", "N GC CONTENT", "N CODING CHARACTERS"    ){ print OUT_info "\t", $state }
-                for my $state ( qw/A C G T U N Y R W S K M D V H B F L I P Q E/                                                ){ print OUT_info "\t", $state }
+                for my $state ( "N MISSING DATA [?]", "N INDELS [-]", "N AMBIGUITIES [N|X]", "N CODING CHARACTERS", "P CODING CHAR FILE [%]", "P CODING CHAR CONCAT_FILE [%]", "N GC CONTENT", "N PARSIMONY INFORMATIVE SITES" ){ print OUT_info "\t", $state } #jgl# <N CODING CHARACTER><N PARSIMONY INFORMATIVE SITES> switched to match order below
+                for my $state ( qw/A C G T U N Y R W S K M D V H B F L I P Q E/                                                                           ){ print OUT_info "\t", $state }
 
                 for my $infile ( sort keys %$href_hol_seq_of_tax_of_infile ){
 
-                    ( my $file = $infile ) =~ s/.fas$|.FASTA$|.aln$|.phy//; #jgl# this list should be consistent across the script -> set it to a variable
+                    ( my $file = $infile ) =~ s/.fas$|.FASTA$|.aln$|.phy//; #jgl# this list seems to vary across the scritp (.FAS|.fas|.fasta|.FASTA etc)? -> set to string variable?
 
-                    print OUT_info    "\n", $file;
+                    print OUT_info "\n", $file;
 
-                    for my $state ( qw/seqstart seqend Ntaxa seqtype Nstates/            ){ print OUT_info "\t", $href_hoh_info_of_infile_of_type->{$infile}{$state} }
 
-                    for my $state ( qw/Nmissingstate Ngapstate Nambstate infstate/        ){
+                    for my $state ( qw/seqstart seqend seqlength Ntaxa seqtype Nstates/ ){ print OUT_info "\t", $href_hoh_info_of_infile_of_type->{$infile}{$state} } #jgl# added seqlength(N SITES)
+
+
+                    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    #jgl# Assigns values to report under 'N CHARACTERS CONCAT_FILE', i.e. the total character states within the locus alignment once it's concatenated within the supermatrix
+                    my $n_concatenated_states = 0;
+                    if ( exists $href_hoh_info_of_infile_of_type->{$infile} ){
+                        $n_concatenated_states = ( $href_hoh_info_of_infile_of_type->{$infile}{seqlength} * $n_taxa_supermatrix );
+                    }
+                    print OUT_info "\t", $n_concatenated_states;
+                    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                    for my $state ( qw/Nmissingstate Ngapstate Nambstate infstate/ ){
 
                         ( $href_hoh_info_of_infile_of_type->{$infile}{$state} ) ? ( print OUT_info "\t", $href_hoh_info_of_infile_of_type->{$infile}{$state} ) : ( print OUT_info "\t0" )
                     }
+
+
+                    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    #jgl# Assigns values to report under 'P CODING CHAR FILE [%]', i.e. % of coding characters within the locus alignment file before it's concatenated
+                    ( $href_hoh_info_of_infile_of_type->{$infile}{infstate} ) ? ( print OUT_info "\t", ( sprintf "%.3f", ( $href_hoh_info_of_infile_of_type->{$infile}{infstate} / $href_hoh_info_of_infile_of_type->{$infile}{Nstates} ) * 100 ) ) : ( print OUT_info "\t0" );
+
+                    #jgl# Assigns values to report under 'P CODING CHAR CONCAT_FILE [%]', i.e. % of coding characters within the locus alignment once it's concatenated within the supermatrix
+                    ( $href_hoh_info_of_infile_of_type->{$infile}{infstate} ) ? ( print OUT_info "\t", ( sprintf "%.3f", ( $href_hoh_info_of_infile_of_type->{$infile}{infstate} / $n_concatenated_states                               ) * 100 ) ) : ( print OUT_info "\t0" );
+                    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
                     if ( $href_hoh_info_of_infile_of_type->{$infile}{seqtype} eq 'nu' ){
 
@@ -3996,7 +4042,7 @@ sub start{
                 # (1)
                 print OUT_info "File\tN SEQUENCES\tN SITES\tSEQUENCE TYPE\tN CHARACTERS";
 
-                for my $state ( "N CODING CHARACTERS", "N MMISSING DATA [?]", "N INDELS", "N AMBIGUITIES", "N PARSIMONY INFORMATIVE SITES", "P GC CONTENT [%]"    ){ print OUT_info "\t", $state }
+                for my $state ( "N CODING CHARACTERS", "N MMISSING DATA [?]", "N INDELS [-]", "N AMBIGUITIES [N|X]", "N PARSIMONY INFORMATIVE SITES", "P GC CONTENT [%]"    ){ print OUT_info "\t", $state }
 
                 for my $state ( qw/A C G T U N Y R W S K M D V H B F L I P Q E/                                                                                ){ print OUT_info "\t", $state }
 
@@ -4071,7 +4117,7 @@ sub start{
             ## (2) ...detailed structure info in separate structure info file
             ## defined files for extra structure info output file are stored in @outfiles
             my @outfiles; 
-            if ( $$sref_structure_seq ){ #jgl# Warning >Variable "$sref_structure_seq" will not stay shared at FASconCAT-G_v1.05.1f.pl line 4052.< {as yet unhandled...}
+            if ( $$sref_structure_seq ){ #jgl# Warning >Variable "$sref_structure_seq" will not stay shared at FASconCAT-G_v1.05.1f.pl line &&&&.< {as yet unhandled...}
 
 
                 ############################################################ START SUPERMATRIX FILE HANDLING 
@@ -4195,16 +4241,17 @@ sub start{
                 ;
 
                 my %supermatrix_seq_of_taxon = @{$href_hol_seq_of_tax_of_infile->{supermatrix}};
-                for my $taxon ( sort {$a<=>$b} keys %supermatrix_seq_of_taxon ){
+                #for my $taxon ( sort $a<=>$b keys %supermatrix_seq_of_taxon ){ 
+                for my $taxon ( sort { (looks_like_number($a) && looks_like_number($b)) ? ($a<=>$b) : ($a cmp $b) } keys %supermatrix_seq_of_taxon ){ #jgl# Warning >non-numeric sort< {for alnum sequence names}
 
-                    unless ( $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat    }{$taxon} ){ $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat    }{$taxon} = 0 }
-                    unless ( $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat    }{$taxon} ){ $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat    }{$taxon} = 0 }
+                    unless ( $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat  }{$taxon} ){ $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat  }{$taxon} = 0 }
+                    unless ( $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon} ){ $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon} = 0 }
 
 
                     print OUT_info $taxon,
-                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{taxconcat        }{$taxon},    # (1)
-                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat    }{$taxon},    # (2)
-                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat    }{$taxon},    # (3)
+                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{taxconcat   }{$taxon}, # (1)
+                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{Nseqconcat  }{$taxon}, # (2)
+                                                "\t", $href_hoh_info_of_infile_of_type->{supermatrix}{Nsequnconcat}{$taxon}, # (3)
                                                 "\n"
                 }
             }
@@ -4918,8 +4965,8 @@ sub start{
 
                 while ( @data ){
 
-                    my $taxon        = shift @data;
-                    my $sequence    = shift @data;
+                    my $taxon    = shift @data;
+                    my $sequence = shift @data;
 
                     my @sites = split "", $sequence;
                     $sequence = ();
@@ -5140,14 +5187,14 @@ sub start{
             print "\n\tExtensive SEQUENCE Info Of INFILES Printed To ", $href_outfile_name->{info};
 
 
-            if ( ( $aref_parameter_fil->[0] =~ /Supermatrix/i    ) && ( $$sref_structure_seq ) ){ 
+            if ( $aref_parameter_fil->[0] =~ /Supermatrix/i && defined $sref_structure_seq && $$sref_structure_seq ){ 
 
                 print "\n\tExtensive Secondary STRUCTURE Info Of Supermatrix Printed To "    , $href_outfile_name->{structure};
                 print "\n\tBasic Secondary STRUCTURE Info Of Supermatrix Printed To "        , $href_outfile_name->{info}
             }
 
 
-            if ( ( $aref_parameter_fil->[0] =~ /Convert/i        ) && ( $$sref_structure_seq ) ){
+            if ( $aref_parameter_fil->[0] =~ /Convert/i && defined $sref_structure_seq && $$sref_structure_seq ){
 
                 print "\n\tExtensive Secondary STRUCTURE Info Of Infiles Printed To "    , $href_outfile_name->{structure};
                 print "\n\tBasic Secondary STRUCTURE Info Of Infiles Printed To "        , $href_outfile_name->{info};
